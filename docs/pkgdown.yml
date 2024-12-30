@@ -1,0 +1,11 @@
+pandoc: 3.1.11
+pkgdown: 2.1.1
+pkgdown_sha: ~
+articles:
+  a01_getting-started: a01_getting-started.html
+  a02_cohorts: a02_cohorts.html
+  a03_dbplyr: a03_dbplyr.html
+  a04_DBI_connection_examples: a04_DBI_connection_examples.html
+  a05_cdm_reference_backends: a05_cdm_reference_backends.html
+  a06_using_cdm_attributes: a06_using_cdm_attributes.html
+last_built: 2024-12-18T22:55Z
