@@ -13,6 +13,18 @@ capr_ref <- function(domain_id) {
 }
 
 
+#' Title
+#'
+#' @param conceptSet
+#' @param limit
+#' @param requiredObservation
+#' @param end
+#' @param endArgs
+#'
+#' @return
+#' @export
+#'
+#' @examples
 createConceptBasedCaprCohort <- function(
     conceptSet,
     limit = "first",
@@ -27,8 +39,9 @@ createConceptBasedCaprCohort <- function(
       offsetDays = 7
     )
 ) {
-  # checkmate::assert_list(conceptSet, types = "ConceptSet")
-  domain <- purrr::pluck(
+
+  # checkmate::assert_class(conceptSet, "ConceptSet")
+  domains <- purrr::pluck(
     conceptSet, "Expression") |>
     purrr::map_chr(~ .x@Concept@domain_id) |>
     unique() |> tolower()
@@ -43,11 +56,14 @@ createConceptBasedCaprCohort <- function(
   ) %>% gsub('_period_end_date', '_exit',.) %>%
     gsub('event_end_date', 'fixed_exit',.) |>
     SqlRender::snakeCaseToCamelCase()
+
+  fnsCalls <- purrr::map_chr(domains, ~glue::glue('Capr::{capr_ref(.x)}')) |>
+    purrr::map( ~ .prep_call(.x, list(conceptSet = conceptSet )))
+  .evals <- purrr::map_chr(
+    seq_along(fnsCalls),
+    ~ glue::glue('eval(fnsCalls[[{.x}]])')) |>
+    paste(collapse = ',')
   args <- list(
-    .entry = .prep_call(
-      glue::glue('Capr::{capr_ref(domain)}'),
-      list(conceptSet = conceptSet
-           )) |> eval(),
     observationWindow = .prep_call('Capr::continuousObservation ', list(
       priorDays = requiredObservation[[1]],
       postDays  = requiredObservation[[2]]
@@ -57,12 +73,11 @@ createConceptBasedCaprCohort <- function(
     endStrategy = .prep_call(paste0('Capr::', .exit), endArgs)
   )
   cohortAttrs <- list(
-    entry = Capr::entry(args$.entry),
+    entry = eval(str2lang(glue::glue('Capr::entry({.evals})'))),
     exit = .prep_call('Capr::exit', args)
   )
-  return(eval(.prep_call('Capr::cohort', cohortAttrs)) |> Capr::toCirce())
+  return(Capr::toCirce(eval(.prep_call('Capr::cohort', cohortAttrs))))
 }
-
 
 .prep_call <- function(fn_name, args) {
   rlang::call2(
@@ -90,5 +105,5 @@ split_on_second_uppercase <- function(string) {
   part1 <- substr(string, 1, second_uppercase_pos - 1)
   part2 <- substr(string, second_uppercase_pos, nchar(string))
 
-  return(c(part1, part2))
+  return(c(part1))
 }

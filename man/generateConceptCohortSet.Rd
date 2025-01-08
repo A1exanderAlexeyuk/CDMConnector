@@ -14,7 +14,10 @@ generateConceptCohortSet(
   end = "observation_period_end_date",
   subsetCohort = NULL,
   subsetCohortId = NULL,
-  overwrite = TRUE
+  overwrite = TRUE,
+  endArgs = list(persistenceWindow = 30L, surveillanceWindow = 0L, daysSupplyOverride =
+    NULL, index = c("startDate"), offsetDays = dplyr::if_else(is.numeric(end), end, 7)),
+  containsSourceConceptIds = FALSE
 )
 
 generate_concept_cohort_set(
@@ -32,8 +35,7 @@ generate_concept_cohort_set(
 \arguments{
 \item{cdm}{A cdm reference object created by \code{CDMConnector::cdmFromCon} or \code{CDMConnector::cdm_from_con}}
 
-\item{conceptSet, concept_set}{A named list of numeric vectors or a Concept Set Expression created
-\code{omopgenerics::newConceptSetExpression}}
+\item{conceptSet}{A named list of numeric vectors, Capr ConceptSet or a Concept Set Expression created \code{omopgenerics::newConceptSetExpression}}
 
 \item{name}{The name of the new generated cohort table as a character string}
 
@@ -41,27 +43,30 @@ generate_concept_cohort_set(
 \itemize{
 \item{"first" will include only the first occurrence of any event in the concept set in the cohort.}
 \item{"all" will include all occurrences of the events defined by the concept set in the cohort.}
+\item{"latest" will include latest occurrence of the events defined by the concept set in the cohort.}
 }}
 
-\item{requiredObservation, required_observation}{A numeric vector of length 2 that specifies the number of days of
-required observation time prior to index and post index for an event to be included in the cohort.}
+\item{requiredObservation}{A numeric vector of length 2 that specifies the number of days of required}
 
 \item{end}{How should the \code{cohort_end_date} be defined?
 \itemize{
 \item{"observation_period_end_date" (default): The earliest observation_period_end_date after the event start date}
-\item{numeric scalar: A fixed number of days from the event start date}
-\item{"event_end_date"}: The event end date. If the event end date is not populated then the event start date will be used
+\item{"drug_exit"}: End of continuous drug expose
+\item{"event_end_date"}: The event end date is derived from adding a number of days to the event's start or end date.
 }}
 
-\item{subsetCohort, subset_cohort}{A cohort table containing the individuals for which to
-generate cohorts for. Only individuals in the cohort table will appear in
-the created generated cohort set.}
-
-\item{subsetCohortId, subset_cohort_id}{A set of cohort IDs from the cohort table for which
-to include. If none are provided, all cohorts in the cohort table will
-be included.}
-
 \item{overwrite}{Should the cohort table be overwritten if it already exists? TRUE (default) or FALSE.}
+
+\item{endArgs}{Set \code{cohort_end_date} strategy arguments
+\itemize{
+\item{"persistenceWindow" (30 by default)}: allow for a maximum of days between exposure records when inferring the era of persistence exposure
+\item{"surveillanceWindow" (0 by default)}: add days to the end of the era of persistence exposure as an additional period of surveillance prior to cohort exit.
+\item{"daysSupplyOverride" (NULL by default)}: Use days supply and exposure end date for exposure duration.
+\item{"index" ("startDate" by default)}: Event date to offset from
+\item{"offsetDays" (captures end by default if numeric or 7 by default)}: Number of days offset
+}}
+
+\item{containsSourceConceptIds}{Boolean value. Point if concept set contains source codes to search}
 }
 \value{
 A cdm reference object with the new generated cohort set table added

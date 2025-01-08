@@ -51,3 +51,5 @@ errorReportSql.txt
 .Rdata
 .DS_Store
 .quarto
+renv/
+renv.lock

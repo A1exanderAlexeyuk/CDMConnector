@@ -38,29 +38,33 @@
 #' observation domains, the the start date will be used as the end date.
 #'
 #' @param cdm A cdm reference object created by `CDMConnector::cdmFromCon` or `CDMConnector::cdm_from_con`
-#' @param conceptSet,concept_set A named list of numeric vectors or a Concept Set Expression created
-#' `omopgenerics::newConceptSetExpression`
 #' @param name The name of the new generated cohort table as a character string
 #' @param limit Include "first" (default) or "all" occurrences of events in the cohort
 #' \itemize{
 #'  \item{"first" will include only the first occurrence of any event in the concept set in the cohort.}
 #'  \item{"all" will include all occurrences of the events defined by the concept set in the cohort.}
+#'  \item{"latest" will include latest occurrence of the events defined by the concept set in the cohort.}
 #' }
-#' @param requiredObservation,required_observation A numeric vector of length 2 that specifies the number of days of
-#' required observation time prior to index and post index for an event to be included in the cohort.
 #' @param end How should the `cohort_end_date` be defined?
 #' \itemize{
 #'  \item{"observation_period_end_date" (default): The earliest observation_period_end_date after the event start date}
-#'  \item{numeric scalar: A fixed number of days from the event start date}
-#'  \item{"event_end_date"}: The event end date. If the event end date is not populated then the event start date will be used
+#'  \item{"drug_exit"}: End of continuous drug expose
+#'  \item{"event_end_date"}: The event end date is derived from adding a number of days to the event's start or end date.
 #' }
-#' @param subsetCohort,subset_cohort  A cohort table containing the individuals for which to
-#' generate cohorts for. Only individuals in the cohort table will appear in
-#' the created generated cohort set.
-#' @param subsetCohortId,subset_cohort_id A set of cohort IDs from the cohort table for which
-#' to include. If none are provided, all cohorts in the cohort table will
-#' be included.
 #' @param overwrite Should the cohort table be overwritten if it already exists? TRUE (default) or FALSE.
+#' @param conceptSet A named list of numeric vectors, Capr ConceptSet or a Concept Set Expression created `omopgenerics::newConceptSetExpression`
+#' @param requiredObservation A numeric vector of length 2 that specifies the number of days of required
+#' @param subsetCohort
+#' @param subsetCohortId
+#' @param endArgs Set `cohort_end_date` strategy arguments
+#' \itemize{
+#'  \item{"persistenceWindow" (30 by default)}: allow for a maximum of days between exposure records when inferring the era of persistence exposure
+#'  \item{"surveillanceWindow" (0 by default)}: add days to the end of the era of persistence exposure as an additional period of surveillance prior to cohort exit.
+#'  \item{"daysSupplyOverride" (NULL by default)}: Use days supply and exposure end date for exposure duration.
+#'  \item{"index" ("startDate" by default)}: Event date to offset from
+#'  \item{"offsetDays" (captures end by default if numeric or 7 by default)}: Number of days offset
+#' }
+#' @param containsSourceConceptIds Boolean value. Point if concept set contains source codes to search
 #'
 #' @return A cdm reference object with the new generated cohort set table added
 #' @export
@@ -74,12 +78,11 @@ generateConceptCohortSet <- function(cdm,
                                      subsetCohortId = NULL,
                                      overwrite = TRUE,
                                      endArgs = list(
-                                       conceptSet = conceptSet,
                                        persistenceWindow = 30L,
                                        surveillanceWindow = 0L,
                                        daysSupplyOverride = NULL,
                                        index = c("startDate"),
-                                       offsetDays = 7
+                                       offsetDays = dplyr::if_else(is.numeric(end), end, 7)
                                      ),
                                      containsSourceConceptIds = FALSE
                                      ) {
@@ -117,15 +120,14 @@ generateConceptCohortSet <- function(cdm,
       "drug_exit")
       )
   } else {
-    rlang::abort('`end` must be a natural number of days from start, "observation_period_end_date", or "event_end_date"')
+    rlang::abort('`end` must be a natural number of days from start,
+                 "observation_period_end_date", "event_end_date" or "drug_exit"')
   }
 
   # check ConceptSet ----
   checkmate::assertList(conceptSet, min.len = 1, any.missing = FALSE,
                         types = c("numeric", "ConceptSet", "conceptSetExpression"),
                         names = "named")
-  checkmate::assertList(conceptSet, min.len = 1, names = "named")
-  .assertTables(cdm, "concept")
 
   if (methods::is(conceptSet, "conceptSetExpression")) {
     # omopgenerics conceptSetExpression
@@ -338,21 +340,30 @@ generate_concept_cohort_set <- function(cdm,
   ))
 }
 .addSourceConceptEntry <- function(cohort) {
-
-  domainBlock <- cohort$PrimaryCriteria$CriteriaList[[1]] |>
+  domainsN <- length(cohort$PrimaryCriteria$CriteriaList)
+  domainBlocks <- purrr::map_chr(
+    1:domainsN, ~ cohort$PrimaryCriteria$CriteriaList[[.x]] |>
     names() |>
     split_on_second_uppercase()
-
-  occurrence <- cohort$PrimaryCriteria$CriteriaList[[1]] |>
+  )
+  occurrences <- purrr::map_chr(
+    1:domainsN, ~ cohort$PrimaryCriteria$CriteriaList[[.x]] |>
     names()
+  )
+  sourceCriteria <- purrr::map_chr(
+    1:domainsN, ~ paste0(domainBlocks[[.x]], 'SourceConcept')
+    )
+  for (.N in  1:domainsN) {
+    cohort$PrimaryCriteria$CriteriaList[[domainsN + .N]] <-
+      cohort$PrimaryCriteria$CriteriaList[[.N]]
+    occurrence <- occurrences[[.N]]
+    sourceCriterion <- sourceCriteria[[.N]]
+    names(cohort$PrimaryCriteria$CriteriaList[[domainsN + .N]][[occurrence]]) <-
+      sourceCriterion
+  }
+  return(cohort)}
 
-  sourceCriteria <- paste0(domainBlock[[1]], 'SourceConcept')
 
-  cohort$PrimaryCriteria$CriteriaList[[2]] <- cohort$PrimaryCriteria$CriteriaList[[1]]
 
-  names(cohort$PrimaryCriteria$CriteriaList[[2]][[occurrence]]) <- sourceCriteria
 
-  return(cohort)
-
-}
 

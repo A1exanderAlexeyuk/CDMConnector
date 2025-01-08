@@ -38,7 +38,8 @@ Imports:
     tidyr,
     jsonlite,
     readr,
-    omopgenerics (>= 0.1.2)
+    omopgenerics (>= 0.1.2),
+    Capr
 Suggests: 
     SqlRender,
     CirceR,
@@ -67,6 +68,7 @@ Config/testthat/parallel: false
 VignetteBuilder: knitr
 Collate: 
     'CDMConnector-package.R'
+    'Caprification.R'
     'Eunomia.R'
     'benchmarkCDMConnector.R'
     'cdm.R'
