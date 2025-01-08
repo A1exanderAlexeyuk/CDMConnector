@@ -12,19 +12,6 @@ capr_ref <- function(domain_id) {
     dplyr::pull(.data$capr_spec)
 }
 
-
-#' Title
-#'
-#' @param conceptSet
-#' @param limit
-#' @param requiredObservation
-#' @param end
-#' @param endArgs
-#'
-#' @return
-#' @export
-#'
-#' @examples
 createConceptBasedCaprCohort <- function(
     conceptSet,
     limit = "first",

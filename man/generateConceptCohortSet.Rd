@@ -23,13 +23,16 @@ generateConceptCohortSet(
 generate_concept_cohort_set(
   cdm,
   concept_set = NULL,
-  name = "cohort",
+  name,
   limit = "first",
   required_observation = c(0, 0),
   end = "observation_period_end_date",
   subset_cohort = NULL,
   subset_cohort_id = NULL,
-  overwrite = TRUE
+  overwrite = TRUE,
+  end_args = list(persistenceWindow = 30L, surveillanceWindow = 0L, daysSupplyOverride =
+    NULL, index = c("startDate"), offsetDays = dplyr::if_else(is.numeric(end), end, 7)),
+  contains_source_concept_ids = FALSE
 )
 }
 \arguments{
@@ -54,6 +57,10 @@ generate_concept_cohort_set(
 \item{"drug_exit"}: End of continuous drug expose
 \item{"event_end_date"}: The event end date is derived from adding a number of days to the event's start or end date.
 }}
+
+\item{subsetCohort}{A cohort table containing the individuals for which to generate cohorts for. Only individuals in the cohort table will appear in the created generated cohort set.}
+
+\item{subsetCohortId}{A set of cohort IDs from the cohort table for which to include. If none are provided, all cohorts in the cohort table will be included.}
 
 \item{overwrite}{Should the cohort table be overwritten if it already exists? TRUE (default) or FALSE.}
 

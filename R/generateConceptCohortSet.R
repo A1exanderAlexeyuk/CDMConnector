@@ -43,7 +43,7 @@
 #' \itemize{
 #'  \item{"first" will include only the first occurrence of any event in the concept set in the cohort.}
 #'  \item{"all" will include all occurrences of the events defined by the concept set in the cohort.}
-#'  \item{"latest" will include latest occurrence of the events defined by the concept set in the cohort.}
+#'  \item{"last" will include latest occurrence of the events defined by the concept set in the cohort.}
 #' }
 #' @param end How should the `cohort_end_date` be defined?
 #' \itemize{
@@ -54,8 +54,8 @@
 #' @param overwrite Should the cohort table be overwritten if it already exists? TRUE (default) or FALSE.
 #' @param conceptSet A named list of numeric vectors, Capr ConceptSet or a Concept Set Expression created `omopgenerics::newConceptSetExpression`
 #' @param requiredObservation A numeric vector of length 2 that specifies the number of days of required
-#' @param subsetCohort
-#' @param subsetCohortId
+#' @param subsetCohort A cohort table containing the individuals for which to generate cohorts for. Only individuals in the cohort table will appear in the created generated cohort set.
+#' @param subsetCohortId A set of cohort IDs from the cohort table for which to include. If none are provided, all cohorts in the cohort table will be included.
 #' @param endArgs Set `cohort_end_date` strategy arguments
 #' \itemize{
 #'  \item{"persistenceWindow" (30 by default)}: allow for a maximum of days between exposure records when inferring the era of persistence exposure
@@ -198,15 +198,24 @@ generateConceptCohortSet <- function(cdm,
 #' `r lifecycle::badge("deprecated")`
 #' @rdname generateConceptCohortSet
 #' @export
-generate_concept_cohort_set <- function(cdm,
-                                        concept_set = NULL,
-                                        name = "cohort",
-                                        limit = "first",
-                                        required_observation = c(0,0),
-                                        end = "observation_period_end_date",
-                                        subset_cohort = NULL,
-                                        subset_cohort_id = NULL,
-                                        overwrite = TRUE) {
+generate_concept_cohort_set <- function(
+    cdm,
+    concept_set = NULL,
+    name,
+    limit = "first",
+    required_observation = c(0,0),
+    end = "observation_period_end_date",
+    subset_cohort = NULL,
+    subset_cohort_id = NULL,
+    overwrite = TRUE,
+    end_args = list(
+      persistenceWindow = 30L,
+      surveillanceWindow = 0L,
+      daysSupplyOverride = NULL,
+      index = c("startDate"),
+      offsetDays = dplyr::if_else(is.numeric(end), end, 7)
+    ),
+    contains_source_concept_ids = FALSE) {
   lifecycle::deprecate_soft("1.7.0", "generate_concept_cohort_set()", "generateConceptCohortSet()")
   generateConceptCohortSet(cdm = cdm,
                            conceptSet = concept_set,
@@ -216,7 +225,9 @@ generate_concept_cohort_set <- function(cdm,
                            end = end,
                            subsetCohort = subset_cohort,
                            subsetCohortId = subset_cohort_id,
-                           overwrite = overwrite)
+                           overwrite = overwrite,
+                           endArgs = end_args,
+                           containsSourceConceptIds = contains_source_concept_ids)
 }
 
 
